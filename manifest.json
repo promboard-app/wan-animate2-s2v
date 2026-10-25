@@ -1,0 +1,440 @@
+{
+  "schema": 1,
+  "id": "promboard.wan-animate2-s2v",
+  "version": "1.0.0",
+  "name": "Wan Animate-2 · S2V — 동작 옮기기 · 말하는 영상 (서버급)",
+  "description": "알리바바 Wan 공개 모델 둘을 한 노드에서 고른다. Animate-2(14B): 캐릭터 그림 속 인물이 움직임 영상 속 사람처럼 움직이는 영상(관절 전처리 없이 영상을 그대로 받는다, 빠른 판 10단계 · 일반 판 40단계). S2V(14B): 캐릭터 그림 + 목소리 파일 + 프롬프트로 그 소리에 맞춰 말하는 영상(소리 포함). 고른 모드의 파일만 받는다(Animate-2 약 46GB · S2V 약 46GB). 서버급 그래픽카드(공식 S2V 80GB 이상)가 필요하고 아직 실제로 돌려 보지 않았다(미검증). 라이선스 Apache-2.0. NVIDIA 그래픽카드 전용.",
+  "author": "PromBoard",
+  "license": "Apache-2.0",
+  "app": ">=1.0.1",
+  "repository": "https://github.com/promboard-app/wan-animate2-s2v",
+  "icon": "icon.png",
+  "contents": [
+    "nodes"
+  ],
+  "nodes": [
+    {
+      "id": "wan-a2s",
+      "label": "Wan Animate-2 · S2V",
+      "description": "Animate-2: 캐릭터 그림 + 움직임 영상 → 그 동작을 하는 캐릭터 영상(24fps, 소리 없음). S2V: 캐릭터 그림 + 목소리 + 프롬프트 → 소리에 맞춰 말하는 영상(16fps, 입력 소리 포함, 길이는 소리를 따른다).",
+      "layout": "auto",
+      "showSources": true,
+      "sources": [
+        "image",
+        "video",
+        "audio"
+      ],
+      "inputs": [
+        {
+          "id": "image",
+          "type": "image",
+          "label": "캐릭터 그림",
+          "required": true
+        },
+        {
+          "id": "video",
+          "type": "video",
+          "label": "움직임 영상 (Animate-2)",
+          "required": false
+        },
+        {
+          "id": "audio",
+          "type": "audio",
+          "label": "목소리 (S2V)",
+          "required": false
+        },
+        {
+          "id": "prompt",
+          "type": "text",
+          "label": "프롬프트 (S2V 필수)",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "id": "video",
+          "type": "video",
+          "label": "영상"
+        }
+      ],
+      "settings": [
+        {
+          "id": "mode",
+          "label": "모드",
+          "help": "Animate-2 빠른 판(증류, 10단계) · Animate-2 일반 판(40단계): 움직임 영상이 필요하다. S2V 말하는 영상: 목소리와 프롬프트가 필요하다. 고른 모드의 파일만 받는다.",
+          "type": "select",
+          "options": [
+            {
+              "value": "animate2-fast",
+              "label": "Animate-2 빠른 판"
+            },
+            {
+              "value": "animate2",
+              "label": "Animate-2 일반 판"
+            },
+            {
+              "value": "s2v",
+              "label": "S2V 말하는 영상"
+            }
+          ],
+          "default": "animate2-fast"
+        },
+        {
+          "id": "resolution",
+          "label": "해상도",
+          "help": "넓이 기준 720P(1280×720) 또는 480P(832×480). 화면 비는 캐릭터 그림을 따른다.",
+          "type": "select",
+          "options": [
+            {
+              "value": "720p",
+              "label": "720P"
+            },
+            {
+              "value": "480p",
+              "label": "480P"
+            }
+          ],
+          "default": "720p"
+        },
+        {
+          "id": "seed",
+          "label": "시드",
+          "help": "-1 이면 매번 다른 결과.",
+          "type": "integer",
+          "default": -1,
+          "min": -1,
+          "max": 2147483647
+        }
+      ]
+    }
+  ],
+  "python": {
+    "version": "3.12",
+    "torch": "host",
+    "lock": {
+      "win": "nodes/requirements-win.txt",
+      "linux": "nodes/requirements-linux.txt"
+    },
+    "entry": "nodes.main"
+  },
+  "gpu": {
+    "vramMinMb": 80000,
+    "cpuAllowed": false
+  },
+  "permissions": {},
+  "requires": {
+    "models": [
+      {
+        "source": "huggingface",
+        "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+        "revision": "b8fff7315c768468a5333511427288870b2e9635",
+        "license": "Apache-2.0",
+        "files": [
+          {
+            "path": "text_encoder/config.json",
+            "bytes": 855,
+            "sha256": "a2bcb24699f6c009a2427432bdd483ef8b2b42a712abc9503759cdc77d171f07"
+          },
+          {
+            "path": "text_encoder/model.safetensors.index.json",
+            "bytes": 22476,
+            "sha256": "31c4c7bcce679eaa0dd4667462394ddb013dc2f748e0bffc893dc9146a320dab"
+          },
+          {
+            "path": "text_encoder/model-00001-of-00003.safetensors",
+            "bytes": 4935812536,
+            "sha256": "a8e861969c7433e707cc5a74065d795d36cca07ec96eb6763eb4083df7248f58"
+          },
+          {
+            "path": "text_encoder/model-00002-of-00003.safetensors",
+            "bytes": 4983103192,
+            "sha256": "d57d948ece4837d850b7a859a4415121d57cacf8b9ee1d4db200c67f592902d7"
+          },
+          {
+            "path": "text_encoder/model-00003-of-00003.safetensors",
+            "bytes": 1442935480,
+            "sha256": "0da9ee284e21d1406df708788db1d502d95d75f69faa25cd26151bf8829b7c5f"
+          },
+          {
+            "path": "tokenizer/special_tokens_map.json",
+            "bytes": 7079,
+            "sha256": "456b58fd240a06c743a7c2cf8008bec501240d68ebd1fc4018ea569505fea270"
+          },
+          {
+            "path": "tokenizer/spiece.model",
+            "bytes": 4548313,
+            "sha256": "e3909a67b780650b35cf529ac782ad2b6b26e6d1f849d3fbb6a872905f452458"
+          },
+          {
+            "path": "tokenizer/tokenizer.json",
+            "bytes": 16837459,
+            "sha256": "20a46ac256746594ed7e1e3ef733b83fbc5a6f0922aa7480eda961743de080ef"
+          },
+          {
+            "path": "tokenizer/tokenizer_config.json",
+            "bytes": 61758,
+            "sha256": "1d8d2a216bf8e70ac15b7ddcea566c4dd0433c024b39a58ca5e4c66bd78defbd"
+          }
+        ],
+        "when": {
+          "node": "wan-a2s",
+          "setting": "mode",
+          "values": [
+            "animate2",
+            "animate2-fast"
+          ]
+        }
+      },
+      {
+        "source": "huggingface",
+        "repo": "Wan-AI/Wan2.2-Animate-2-14B-Diffusers",
+        "revision": "7d48412d7b903ff3a89f4f5a960d99e1899605a1",
+        "license": "Apache-2.0",
+        "files": [
+          {
+            "path": "model_index.json",
+            "bytes": 560,
+            "sha256": "c5b489acbab8823cce49b16a2aea972069ba061e6d69cd0b28960a7b4ba5f160"
+          },
+          {
+            "path": "scheduler/scheduler_config.json",
+            "bytes": 978,
+            "sha256": "3e9b1c46f649360b76c7c22264a87b690cbb58d49444c53b14ed65eb12f67c4d"
+          },
+          {
+            "path": "image_encoder/config.json",
+            "bytes": 498,
+            "sha256": "c145715057b80f65fab306986f4a4f8e41f0b499745cc5ef0aa9f90ae263c3cb"
+          },
+          {
+            "path": "image_encoder/model.safetensors",
+            "bytes": 1261596224,
+            "sha256": "e672f7dcb7f46458f8edc218669bc25d7ab1fc48bec53e8bd5b957bc1386a5e4"
+          },
+          {
+            "path": "vae/config.json",
+            "bytes": 898,
+            "sha256": "11f840073d1ed2f4090c738d645994bf896a6c7daea0987a15b4f2ebe89b5128"
+          },
+          {
+            "path": "vae/diffusion_pytorch_model.safetensors",
+            "bytes": 507591892,
+            "sha256": "d6e524b3fffede1787a74e81b30976dce5400c4439ba64222168e607ed19e793"
+          },
+          {
+            "path": "transformer/config.json",
+            "bytes": 457,
+            "sha256": "a1be4a429c78d11073464954fc94a1f811d1b3b4ccc4d6b8bfe1ff90d92bd8af"
+          },
+          {
+            "path": "transformer/diffusion_pytorch_model.safetensors.index.json",
+            "bytes": 119890,
+            "sha256": "6e80a505bfc4907ad3885b7436b3110d3f364aa84d92d0895d74a0feed6857fb"
+          },
+          {
+            "path": "transformer/diffusion_pytorch_model-00001-of-00004.safetensors",
+            "bytes": 9874593104,
+            "sha256": "af9719a7623c9d1606e876b7387a5be4444c34334ba76f3f2fb9a46690ded25a"
+          },
+          {
+            "path": "transformer/diffusion_pytorch_model-00002-of-00004.safetensors",
+            "bytes": 9975379320,
+            "sha256": "f4b73ff42e08584400120f3a519d021a337e3aeb8304980c90c357baed609a1c"
+          },
+          {
+            "path": "transformer/diffusion_pytorch_model-00003-of-00004.safetensors",
+            "bytes": 9954401600,
+            "sha256": "099d2a406ba1b72e1ef4a4396dbe38783b974831c334ae09c664541e2d0956bb"
+          },
+          {
+            "path": "transformer/diffusion_pytorch_model-00004-of-00004.safetensors",
+            "bytes": 2985521520,
+            "sha256": "01c7ab59033a407341cbfac1e90480f4a9816acf8a5f53fd84ef214e035f778f"
+          }
+        ],
+        "when": {
+          "node": "wan-a2s",
+          "setting": "mode",
+          "values": [
+            "animate2"
+          ]
+        }
+      },
+      {
+        "source": "huggingface",
+        "repo": "Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers",
+        "revision": "59e4141466bcb1bf9733eca1bc78be6891c9fbdf",
+        "license": "Apache-2.0",
+        "files": [
+          {
+            "path": "model_index.json",
+            "bytes": 564,
+            "sha256": "da26517859f8e2766366795750dbfe3f758968fc9dfa6650f4c9f5beb1e6bc1d"
+          },
+          {
+            "path": "scheduler/scheduler_config.json",
+            "bytes": 487,
+            "sha256": "dd230f215f07fef6c626e26bb42946ab2db3a100eed1053a43fee738302f7b62"
+          },
+          {
+            "path": "image_encoder/config.json",
+            "bytes": 498,
+            "sha256": "c145715057b80f65fab306986f4a4f8e41f0b499745cc5ef0aa9f90ae263c3cb"
+          },
+          {
+            "path": "image_encoder/model.safetensors",
+            "bytes": 1261596224,
+            "sha256": "e672f7dcb7f46458f8edc218669bc25d7ab1fc48bec53e8bd5b957bc1386a5e4"
+          },
+          {
+            "path": "vae/config.json",
+            "bytes": 898,
+            "sha256": "11f840073d1ed2f4090c738d645994bf896a6c7daea0987a15b4f2ebe89b5128"
+          },
+          {
+            "path": "vae/diffusion_pytorch_model.safetensors",
+            "bytes": 507591892,
+            "sha256": "d6e524b3fffede1787a74e81b30976dce5400c4439ba64222168e607ed19e793"
+          },
+          {
+            "path": "transformer/config.json",
+            "bytes": 457,
+            "sha256": "a1be4a429c78d11073464954fc94a1f811d1b3b4ccc4d6b8bfe1ff90d92bd8af"
+          },
+          {
+            "path": "transformer/diffusion_pytorch_model.safetensors.index.json",
+            "bytes": 119890,
+            "sha256": "6e80a505bfc4907ad3885b7436b3110d3f364aa84d92d0895d74a0feed6857fb"
+          },
+          {
+            "path": "transformer/diffusion_pytorch_model-00001-of-00004.safetensors",
+            "bytes": 9874593104,
+            "sha256": "ebc182727d948cb61cac929af3b2887e0a4b7c8b683b7356628cf0350d332c0a"
+          },
+          {
+            "path": "transformer/diffusion_pytorch_model-00002-of-00004.safetensors",
+            "bytes": 9975379320,
+            "sha256": "e808cf7a7e7aaf358478a2198152f9e3ec8609c66712be397c21b4b7ec7ef501"
+          },
+          {
+            "path": "transformer/diffusion_pytorch_model-00003-of-00004.safetensors",
+            "bytes": 9954401600,
+            "sha256": "444eeea631fe6d2df80780f521f6c7716bd079fc177279ba09d2d20479f2dfaf"
+          },
+          {
+            "path": "transformer/diffusion_pytorch_model-00004-of-00004.safetensors",
+            "bytes": 2985521520,
+            "sha256": "130fd0a278a06096e483f08b2492ddd86b89fef8676b3d7b30556b3230a9b005"
+          }
+        ],
+        "when": {
+          "node": "wan-a2s",
+          "setting": "mode",
+          "values": [
+            "animate2-fast"
+          ]
+        }
+      },
+      {
+        "source": "huggingface",
+        "repo": "Wan-AI/Wan2.2-S2V-14B",
+        "revision": "dab4e9c55bbe4c8c4d03db1c2c98c7f0ac9c454b",
+        "license": "Apache-2.0",
+        "files": [
+          {
+            "path": "config.json",
+            "bytes": 890,
+            "sha256": "a6da0bd7da5fd43ba04049c625056b512b367d5caa5963623dc9e04252a4c7a6"
+          },
+          {
+            "path": "diffusion_pytorch_model.safetensors.index.json",
+            "bytes": 113150,
+            "sha256": "b5ea0e7789d82c00bd25cfbeb940a1675e048986b1527198251da74d700508d2"
+          },
+          {
+            "path": "diffusion_pytorch_model-00001-of-00004.safetensors",
+            "bytes": 9968229352,
+            "sha256": "5fb54febf10b729a6da7da222625d6ecaedde78becda01efbc13f6bebaeb6d43"
+          },
+          {
+            "path": "diffusion_pytorch_model-00002-of-00004.safetensors",
+            "bytes": 9891539248,
+            "sha256": "922928094d8ea9b075888d473b7f9bf80ec60852eb83934079141b161a186f01"
+          },
+          {
+            "path": "diffusion_pytorch_model-00003-of-00004.safetensors",
+            "bytes": 9956985634,
+            "sha256": "017fab8d2845976c9555df841765255118552fbad3e6760629342b47c36c24fc"
+          },
+          {
+            "path": "diffusion_pytorch_model-00004-of-00004.safetensors",
+            "bytes": 2774887624,
+            "sha256": "5c194909066b8d7ed91f2c214389aa7ec7f25c60e3dd10ba8f607daf4f5cc6c0"
+          },
+          {
+            "path": "Wan2.1_VAE.pth",
+            "bytes": 507609880,
+            "sha256": "38071ab59bd94681c686fa51d75a1968f64e470262043be31f7a094e442fd981"
+          },
+          {
+            "path": "models_t5_umt5-xxl-enc-bf16.pth",
+            "bytes": 11361920418,
+            "sha256": "7cace0da2b446bbbbc57d031ab6cf163a3d59b366da94e5afe36745b746fd81d"
+          },
+          {
+            "path": "google/umt5-xxl/special_tokens_map.json",
+            "bytes": 6623,
+            "sha256": "7b8a9f5040adb67b5805abdfd42c1f8d0f3d0e711f10726580eb3789cd0ad61d"
+          },
+          {
+            "path": "google/umt5-xxl/spiece.model",
+            "bytes": 4548313,
+            "sha256": "e3909a67b780650b35cf529ac782ad2b6b26e6d1f849d3fbb6a872905f452458"
+          },
+          {
+            "path": "google/umt5-xxl/tokenizer.json",
+            "bytes": 16837417,
+            "sha256": "6e197b4d3dbd71da14b4eb255f4fa91c9c1f2068b20a2de2472967ca3d22602b"
+          },
+          {
+            "path": "google/umt5-xxl/tokenizer_config.json",
+            "bytes": 61728,
+            "sha256": "ed9a3a8b0faa71a70a32847e0435fe036e6e112d4df4edb7bb48a921e344dc05"
+          },
+          {
+            "path": "wav2vec2-large-xlsr-53-english/config.json",
+            "bytes": 1531,
+            "sha256": "ffcc5c417fe11433447975d5053b2279fbeafd6bca03dd2753082e72ad2d36b7"
+          },
+          {
+            "path": "wav2vec2-large-xlsr-53-english/preprocessor_config.json",
+            "bytes": 262,
+            "sha256": "ca5999a45e98bb76ea87a461ba28a23ad32a5bb9f733b8e0f6546ff38b6c612d"
+          },
+          {
+            "path": "wav2vec2-large-xlsr-53-english/special_tokens_map.json",
+            "bytes": 85,
+            "sha256": "bb7068de1150661a10b55f9e4b12a0e77af8bf91f5e45e1b58afaf1d0e17f675"
+          },
+          {
+            "path": "wav2vec2-large-xlsr-53-english/vocab.json",
+            "bytes": 300,
+            "sha256": "1ec5eeced764da0e4a4d2e95c1c3470c3235222db0182088beac3e7c67eda8ff"
+          },
+          {
+            "path": "wav2vec2-large-xlsr-53-english/model.safetensors",
+            "bytes": 1261942732,
+            "sha256": "6144f8464c6aaa220dd57c5a2ad4039b5710dcf8ee6e67057675f76597c19875"
+          }
+        ],
+        "when": {
+          "node": "wan-a2s",
+          "setting": "mode",
+          "values": [
+            "s2v"
+          ]
+        }
+      }
+    ]
+  }
+}
