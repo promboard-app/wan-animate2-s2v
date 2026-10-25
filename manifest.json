@@ -1,12 +1,17 @@
 {
   "schema": 1,
   "id": "promboard.wan-animate2-s2v",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Wan Animate-2 · S2V — 동작 옮기기 · 말하는 영상 (서버급)",
-  "description": "알리바바 Wan 공개 모델 둘을 한 노드에서 고른다. Animate-2(14B): 캐릭터 그림 속 인물이 움직임 영상 속 사람처럼 움직이는 영상(관절 전처리 없이 영상을 그대로 받는다, 빠른 판 10단계 · 일반 판 40단계). S2V(14B): 캐릭터 그림 + 목소리 파일 + 프롬프트로 그 소리에 맞춰 말하는 영상(소리 포함). 고른 모드의 파일만 받는다(Animate-2 약 46GB · S2V 약 46GB). 서버급 그래픽카드(공식 S2V 80GB 이상)가 필요하고 아직 실제로 돌려 보지 않았다(미검증). 라이선스 Apache-2.0. NVIDIA 그래픽카드 전용.",
+  "description": "알리바바 Wan 공개 모델 둘을 한 노드에서 고른다. Animate-2(14B): 캐릭터 그림 속 인물이 움직임 영상 속 사람처럼 움직이는 영상(관절 전처리 없이 영상을 그대로 받는다, 빠른 판 10단계 · 일반 판 40단계). S2V(14B): 캐릭터 그림 + 목소리 파일 + 프롬프트로 그 소리에 맞춰 말하는 영상(소리 포함). 고른 모드의 파일만 받는다(Animate-2 약 46GB · S2V 약 46GB). 서버급 그래픽카드(공식 S2V 80GB 이상)가 필요하고 아직 실제로 돌려 보지 않았다(검증 안 됨). 라이선스 Apache-2.0. NVIDIA 그래픽카드 전용.",
   "author": "PromBoard",
   "license": "Apache-2.0",
-  "app": ">=1.0.1",
+  "app": ">=1.0.3",
+  "categories": [
+    "motionTransfer",
+    "videoGenerate"
+  ],
+  "unverified": true,
   "repository": "https://github.com/promboard-app/wan-animate2-s2v",
   "icon": "icon.png",
   "contents": [

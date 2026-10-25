@@ -1,5 +1,5 @@
 """promboard.wan-animate2-s2v — Wan Animate-2(동작 옮기기) · Wan2.2 S2V(말하는 영상) 노드 코드.
-🔴 미검증 · 서버급: 이 코드는 실제로 돌려 보지 않았다(필요한 그래픽카드 메모리가 이 PC 보다 훨씬 크다).
+🔴 검증 안 됨 · 서버급: 이 코드는 실제로 돌려 보지 않았다(필요한 그래픽카드 메모리가 이 PC 보다 훨씬 크다).
 
 노드 하나(wan-a2s)가 모드에 따라 두 모델 중 하나를 쓴다.
   animate2 · animate2-fast  Wan-AI/Wan2.2-Animate-2-14B(-Distilled)-Diffusers. 캐릭터 그림 + 움직임 영상 → 캐릭터가 영상 속 사람처럼
@@ -194,8 +194,14 @@ def wan_a2s(ctx, inputs, settings):
         _write_mp4(out, frames, fps, audio_path)
         ctx.log(f"done in {time.monotonic() - t0:.1f}s")
     except torch.OutOfMemoryError:
+        oom = True
+    else:
+        oom = False
+    if oom:
+        # except 블록 밖에서 정리하고 새 오류를 낸다 — 블록 안에서 내면 원래 오류(와 그 프레임이 쥔 그래픽카드 텐서)가
+        # 새 오류의 __context__ 로 남아 사이드카가 다음 실행까지 메모리를 놓지 못한다.
         _free()
-        raise RuntimeError("그래픽카드 메모리가 모자라 멈췄습니다. 이 모델은 서버급 그래픽카드(32GB 초과)가 필요합니다.") from None
+        raise RuntimeError("그래픽카드 메모리가 모자라 멈췄습니다. 이 모델은 서버급 그래픽카드(32GB 초과)가 필요합니다.")
     ctx.progress(1.0, "done")
     return {"video": out}
 
