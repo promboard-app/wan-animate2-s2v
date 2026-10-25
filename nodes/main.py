@@ -13,12 +13,16 @@
                             길이는 소리를 따른다(num_clip 없음 = 소리 끝까지). 결과 영상에 입력 소리를 넣는다(공식 merge_video_audio 와 같은 일).
                             공식 코드에서 바꾼 것: flash-attn 이 없을 때 PyTorch SDPA 로 같은 계산(modules/attention.py),
                             decord 를 쓰는 곳(이어 만들기 · 포즈 영상)만 그때 불러온다(speech2video.py). 둘 다 'PromBoard:' 주석.
+진행률 · 취소: 두 모델 모두 단계 콜백이 없다. Animate-2 는 디노이즈 반복이 구간마다 여는 tqdm 을(_SegmentProgress),
+  S2V 는 변환기 forward 를(_s2v) 이 실행 동안만 바꿔 끼워 단계마다 취소를 보고 진행률을 알린다.
 
 노드 코드 약속(NODES · ctx · 입출력 모양)은 PromBoard docs/Scrum4/02_스키마-v0.md §6.
 """
 import gc
+import importlib
 import os
 import random
+import re
 import time
 
 ANIMATE2 = {
@@ -74,6 +78,27 @@ def _read_video(path):
     return frames, rate
 
 
+class _SegmentProgress:
+    """Animate-2 디노이즈 반복이 구간마다 여는 tqdm(total=단계 수, desc="Segment k/n") 자리 — 단계마다 취소를 보고 진행률을 알린다."""
+
+    def __init__(self, ctx, total, desc):
+        found = re.search(r"(\d+)/(\d+)", desc or "")
+        self.segment, self.segments = (int(found.group(1)) - 1, int(found.group(2))) if found else (0, 1)
+        self.ctx, self.total, self.done = ctx, max(1, total or 1), 0
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def update(self, n=1):
+        self.done += n
+        self.ctx.check_cancel()
+        part = (self.segment + min(1.0, self.done / self.total)) / max(1, self.segments)
+        self.ctx.progress(0.1 + 0.85 * min(1.0, part), "generate")
+
+
 def _animate2(ctx, inputs, settings, image, seed):
     import torch
     from diffusers import AutoencoderKLWan, ComponentsManager, DPMSolverMultistepScheduler, WanAnimate2Transformer3DModel
@@ -119,7 +144,15 @@ def _animate2(ctx, inputs, settings, image, seed):
     prompt = (inputs.get("prompt") or "").strip()
     if prompt:
         kwargs["prompt"] = prompt
-    videos = pipe(**kwargs)
+    # diffusers 0.42 의 Animate-2 디노이즈 반복(WanAnimate2SegmentDenoiseInner)은 블록의 progress_bar 가 아니라 제 모듈의 tqdm 을
+    # 바로 부른다 — 그 이름을 이 실행 동안만 바꿔 끼운다.
+    denoise = importlib.import_module("diffusers.modular_pipelines.wan_animate_2.denoise")
+    original = denoise.tqdm
+    denoise.tqdm = lambda iterable=None, total=None, desc="", **_: _SegmentProgress(ctx, total, desc)
+    try:
+        videos = pipe(**kwargs)
+    finally:
+        denoise.tqdm = original
     return videos[0], ANIMATE2_FPS, None
 
 
@@ -141,28 +174,53 @@ def _s2v(ctx, inputs, settings, image_path, seed):
         pipe = WanS2V(config=s2v_14B, checkpoint_dir=root, device_id=0, rank=0, t5_cpu=True, init_on_cpu=True, convert_model_dtype=True)
         _CACHE.update(key="s2v", pipe=pipe)
     pipe = _CACHE["pipe"]
+    # 공식 generate 에는 단계 콜백이 없어 변환기(noise_model) forward 마다 취소를 보고 진행률을 알린다. 한 단계에 forward 가
+    # guidance 로 두 번(조건 · 무조건)이고, 클립 수는 소리 길이로 generate 안에서 정해져(num_repeat=None) encode_audio 가 돌려준 수를 받아 둔다.
+    calls_per_clip = s2v_14B.sample_steps * (2 if s2v_14B.sample_guide_scale > 1 else 1)
+    state = {"clips": 1, "calls": 0}
+    encode_audio = pipe.encode_audio
+
+    def count_clips(*args, **kwargs):
+        emb, clips = encode_audio(*args, **kwargs)
+        state["clips"] = max(1, int(clips))
+        return emb, clips
+
+    def on_forward(_module, _args):
+        ctx.check_cancel()
+        state["calls"] += 1
+        ctx.progress(0.1 + 0.85 * min(1.0, state["calls"] / (calls_per_clip * state["clips"])), "generate")
+
+    pipe.encode_audio = count_clips
+    handle = pipe.noise_model.register_forward_pre_hook(on_forward)
     ctx.progress(0.1, "generate")
-    video = pipe.generate(
-        input_prompt=prompt,
-        ref_image_path=image_path,
-        audio_path=inputs["audio"],
-        enable_tts=False,
-        tts_prompt_audio=None,
-        tts_prompt_text=None,
-        tts_text=None,
-        num_repeat=None,
-        pose_video=None,
-        max_area=MAX_AREA[settings["resolution"]],
-        infer_frames=80,
-        shift=s2v_14B.sample_shift,
-        sample_solver="unipc",
-        sampling_steps=s2v_14B.sample_steps,
-        guide_scale=s2v_14B.sample_guide_scale,
-        n_prompt="",
-        seed=seed,
-        offload_model=True,
-        init_first_frame=False,
-    )
+    try:
+        video = pipe.generate(
+            input_prompt=prompt,
+            ref_image_path=image_path,
+            audio_path=inputs["audio"],
+            enable_tts=False,
+            tts_prompt_audio=None,
+            tts_prompt_text=None,
+            tts_text=None,
+            num_repeat=None,
+            pose_video=None,
+            max_area=MAX_AREA[settings["resolution"]],
+            infer_frames=80,
+            shift=s2v_14B.sample_shift,
+            sample_solver="unipc",
+            sampling_steps=s2v_14B.sample_steps,
+            guide_scale=s2v_14B.sample_guide_scale,
+            n_prompt="",
+            seed=seed,
+            offload_model=True,
+            init_first_frame=False,
+        )
+    finally:
+        handle.remove()
+        del pipe.encode_audio  # 덮어쓴 것을 지워 클래스 메서드로 되돌린다
+        # 취소 · 오류로 단계 중에 멈추면 변환기가 그래픽카드에 남는다(끝까지 돌면 generate 가 이미 내렸다).
+        pipe.noise_model.cpu()
+        torch.cuda.empty_cache()
     # (C, T, H, W) -1~1 → (T, H, W, C) 0~1
     frames = ((video.float().clamp(-1, 1) + 1) / 2).permute(1, 2, 3, 0).cpu().numpy()
     return frames, S2V_FPS, inputs["audio"]
